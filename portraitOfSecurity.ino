@@ -1,30 +1,41 @@
+// Portait of security
+// Arduino Uno program to move eyes behind a portrait like Scooby Doo shows
+// Andrew Ruether
+
 #include <Servo.h>
 
 Servo myservo;  // create servo object to control a servo
 
-#define leftPIRpin  12
-#define rightPIRpin 13
+// Arduino I/O pins for PIR sensors
+#define leftPIRpin  12  // left PIR sensor
+#define rightPIRpin 13  // Right PIR sensor
+#define servoPin  9     // Servo pin
 
+// Delay before making another move (in mS)
+#define delayTime 1800000
+
+// Servo values for different positions
+#define leftPosition 5
+#define rightPosition 80
+#define neutralPosition 120
 
 int pos = 0;    // variable to store the servo position
+bool inNeutralPosition = false;   // Are the eyes in a neutral position?
+unsigned long lastMoveTime = 0;   // millis value when the eyes were last moved
 
-bool inNeutralPosition = false;
-
-unsigned long lastRightMoveTime = 0;
-unsigned long lastLeftMoveTime = 0;
-
-// Delay before making another move
-unsigned long delayTime = 1800000;
 
 void setup() {
 
+  // Set PIR sensor I/O pins to inputs
   pinMode(leftPIRpin, INPUT);     
   pinMode(rightPIRpin, INPUT);     
 
+  // Set up servo by attaching it to an Arduino pin
+  myservo.attach(servoPin);  
+
   Serial.begin(115200);
 
-  myservo.attach(9);  // attaches the servo on pin 9 to the servo object
-
+  // Do a start up routine to move the eyes
   for (pos = 0; pos <= 180; pos += 1) { // goes from 0 degrees to 180 degrees
     // in steps of 1 degree
     myservo.write(pos);              // tell servo to go to position in variable 'pos'
@@ -43,48 +54,46 @@ void setup() {
   myservo.write(90); 
 
   // Go to neutral position
-  myservo.write(random(120,160));
+  myservo.write(120 + random(40));
   inNeutralPosition = true;
 }
 
-
-
-
 void loop() {
 
+  // Read PIR (Passive Infra-Red) sensors
   bool leftSensor = digitalRead(leftPIRpin);
   bool rightSensor = digitalRead(rightPIRpin);
 
+  // Print out status
+  Serial.print("Left: ");
   Serial.print(leftSensor);
-  Serial.print(" ");
-  Serial.print(lastLeftMoveTime);
-  Serial.print(" ");
+  Serial.print("\t");
+  Serial.print("Right: "); 
   Serial.print(rightSensor);
-  Serial.print(" ");
-  Serial.print(lastRightMoveTime);
-  Serial.print(" ");
+  Serial.print("\t");
+  Serial.print("Last move time: "); 
+  Serial.print(lastMoveTime);
+  Serial.print("\t");
   Serial.print(millis());
   Serial.print(" ");
   Serial.println(delayTime);  
 
   // If left sensor was just triggered, move left
-  if (leftSensor && (millis() - lastLeftMoveTime) > delayTime) {
-    myservo.write(10);
-    lastLeftMoveTime = millis();
+  if (leftSensor && (millis() - lastMoveTime) > delayTime) {
+    myservo.write(leftPosition + random(5));  // Move to a left position
+    lastMoveTime = millis();
     inNeutralPosition = false;
     Serial.println("Left motion detected");
-  } else if (rightSensor && (millis() - lastRightMoveTime) > delayTime) {
+  } else if (rightSensor && (millis() - lastMoveTime) > delayTime) {
     // If right sensor was just triggered, move to center
-    myservo.write(90);
-    lastRightMoveTime = millis();
+    myservo.write(rightPosition + random(10));
+    lastMoveTime = millis();
     inNeutralPosition = false;
     Serial.println("Right motion detected");
-  } 
-
-  // If nothing is going on for while, move to a neutral position.
-  if (!inNeutralPosition && !leftSensor && !rightSensor && ((millis() - lastLeftMoveTime) > 2*delayTime) && ((millis() - lastRightMoveTime) > 2*delayTime)) {
-    myservo.write(random(120,160));
-    lastRightMoveTime = lastLeftMoveTime = millis();
+  } else if (!inNeutralPosition && !leftSensor && !rightSensor && ((millis() - lastMoveTime) > 2*delayTime)) {
+    // If nothing is going on for while, move to a neutral position.
+    myservo.write(neutralPosition + random(40));
+    lastMoveTime  = millis();
     inNeutralPosition = true;
     Serial.println("Move to neutral position");
   }
