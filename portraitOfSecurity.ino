@@ -14,6 +14,9 @@ Servo myservo;  // create servo object to control a servo
 // Delay before making another move (in mS)
 #define delayTime 1800000
 
+// Delay between servo steps (in mS)
+#define stepDelay = 15
+
 // Servo values for different positions
 #define leftPosition 5
 #define rightPosition 80
@@ -64,6 +67,10 @@ void loop() {
   bool leftSensor = digitalRead(leftPIRpin);
   bool rightSensor = digitalRead(rightPIRpin);
 
+  // Get current position
+  int currentPos = myservo.read();
+  int newPos = currentPos;
+
   // Print out status
   Serial.print("Left: ");
   Serial.print(leftSensor);
@@ -76,27 +83,47 @@ void loop() {
   Serial.print("\t");
   Serial.print(millis());
   Serial.print(" ");
-  Serial.println(delayTime);  
+  Serial.println(currentPos);  
+
+
 
   // If left sensor was just triggered, move left
   if (leftSensor && (millis() - lastMoveTime) > delayTime) {
-    myservo.write(leftPosition + random(5));  // Move to a left position
-    lastMoveTime = millis();
+    newPos = leftPosition + random(5);
     inNeutralPosition = false;
     Serial.println("Left motion detected");
   } else if (rightSensor && (millis() - lastMoveTime) > delayTime) {
     // If right sensor was just triggered, move to center
-    myservo.write(rightPosition + random(10));
-    lastMoveTime = millis();
+    newPos = rightPosition + random(10);
     inNeutralPosition = false;
     Serial.println("Right motion detected");
   } else if (!inNeutralPosition && !leftSensor && !rightSensor && ((millis() - lastMoveTime) > 2*delayTime)) {
     // If nothing is going on for while, move to a neutral position.
-    myservo.write(neutralPosition + random(40));
-    lastMoveTime  = millis();
+    newPos = neutralPosition + random(40);
     inNeutralPosition = true;
     Serial.println("Move to neutral position");
   }
+
+  // If a move is requested, carry it out
+  if (newPos != currentPos) {
+    Serial.print("Move to: ");
+    Serial.println(newPos);
+    if (currentPos >= newPos) {
+      for (pos = currentPos; pos >= newPos; pos += -1) { 
+        // in steps of 1 degree
+        myservo.write(pos);              // tell servo to go to position in variable 'pos'
+        delay(15);                       // waits 15 ms for the servo to reach the position
+      }
+    } else {
+      for (pos = currentPos; pos <= newPos; pos += 1) { 
+        // in steps of 1 degree
+        myservo.write(pos);              // tell servo to go to position in variable 'pos'
+        delay(15);                       // waits 15 ms for the servo to reach the position
+      }
+    }
+    lastMoveTime = millis();
+  }
+
   delay(100);
 }
 
